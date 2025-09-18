@@ -38,4 +38,4 @@ Contributions and suggestions are welcome! Feel free to open issues or submit pu
 
 ## Contact
 
-For questions or feedback, please contact [your email or website].
+For questions or feedback, please contact mujahidsyyed@gmail.com.
