@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hardcore Refresh Options</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+    }
+    input[type="text"] {
+      font-size: 1.1em;
+      padding: 5px;
+      width: 250px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 7px 15px;
+      font-size: 1em;
+    }
+  </style>
+</head>
+<body>
+  <h2>Hardcore Refresh Options</h2>
+
+  <label for="shortcutInput">Keyboard Shortcut (e.g. Ctrl+Shift+L):</label>
+  <input id="shortcutInput" type="text" placeholder="e.g. Ctrl+Shift+L" />
+
+  <button id="saveBtn">Save Shortcut</button>
+
+  <p><em>Note: After saving, you may need to reload your extension in chrome://extensions/ for the new shortcut to take effect.</em></p>
+
+  <script src="options.js"></script>
+</body>
+</html>

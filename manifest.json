@@ -1,27 +1,40 @@
 {
   "manifest_version": 3,
   "name": "Hardcore Refresh",
-  "description": "Wipes localStorage and sessionStorage like a boss. Reloads the page for a full React context reset.",
-  "version": "1.0",
-  "permissions": ["scripting", "activeTab"],
-  "action": {
-    "default_title": "Hardcore Refresh",
-     "default_icon": {
-        "16": "icon16.png",
-        "48": "icon48.png",
-        "128": "icon128.png"
-  }
-  },
+  "version": "1.1",
+  "description": "Clear localStorage, sessionStorage, IndexedDB, Cache, Service Workers, then reload with feedback and custom shortcuts.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs",
+    "unlimitedStorage",
+    "cookies"
+],
   "background": {
     "service_worker": "background.js"
   },
+  "action": {
+    "default_title": "Hardcore Refresh",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
   "commands": {
-    "clear-storage": {
+    "refresh-with-clear": {
       "suggested_key": {
         "default": "Ctrl+Shift+L",
         "mac": "Command+Shift+L"
       },
-      "description": "Hardcore refresh: wipe state & reload"
+      "description": "Clear storage and reload the page"
     }
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
   }
 }

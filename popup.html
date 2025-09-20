@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hardcore Refresh</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      width: 250px;
+      padding: 1rem;
+    }
+    h2 {
+      margin-top: 0;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h2>Hardcore Refresh</h2>
+  <form id="popup-form">
+    <label>
+      <input type="checkbox" id="clearLocalStorage" />
+      Clear localStorage
+    </label>
+    <label>
+      <input type="checkbox" id="clearSessionStorage" />
+      Clear sessionStorage
+    </label>
+    <label>
+      <input type="checkbox" id="clearCookies" />
+      Clear cookies
+    </label>
+    <button type="submit">Refresh Now</button>
+  </form>
+  <p><a href="options.html" target="_blank">Open Options</a></p>
+
+  <script src="popup.js"></script>
+</body>
+</html>
