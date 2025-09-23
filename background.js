@@ -9,6 +9,10 @@ chrome.commands.onCommand.addListener(async (command) => {
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: clearAllStoragesAndNotify,
+    }, () => {
+      // Show tick animation on extension icon
+      chrome.action.setBadgeText({ text: '✓' });
+      setTimeout(() => chrome.action.setBadgeText({ text: '' }), 1500);
     });
   }
 });
@@ -48,6 +52,15 @@ function clearAllStoragesAndNotify() {
 
       // 🎉 Show celebration and reload
       showVisualCelebration();
+
+      // Notify background to show tick
+      try {
+        if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage({ action: 'showTick' });
+        }
+      } catch (e) {
+        // ignore errors in page context
+      }
 
       setTimeout(() => location.reload(), 2000);
     } catch (e) {
@@ -134,3 +147,11 @@ function clearAllStoragesAndNotify() {
   }
 }
 
+// Listen for messages from page script
+chrome.runtime.onMessage.addListener((message) => {
+  if (message && message.action === 'showTick') {
+    // Show tick animation on extension icon
+    chrome.action.setBadgeText({ text: '✓' });
+    setTimeout(() => chrome.action.setBadgeText({ text: '' }), 1500);
+  }
+});

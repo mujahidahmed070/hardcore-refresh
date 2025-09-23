@@ -39,6 +39,10 @@ form.addEventListener('submit', (e) => {
         clearSessionStorageCheckbox.checked,
         clearCookiesCheckbox.checked
       ]
+    }, () => {
+      // Show tick animation on extension icon
+      chrome.action.setBadgeText({ text: '✓' });
+      setTimeout(() => chrome.action.setBadgeText({ text: '' }), 1500);
     });
   });
 });
