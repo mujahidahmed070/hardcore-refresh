@@ -29,6 +29,9 @@
         "mac": "Command+Shift+L"
       },
       "description": "Clear storage and reload the page"
+    },
+    "_execute_action": {
+      "description": "Open extension popup"
     }
   },
   "options_page": "options.html",

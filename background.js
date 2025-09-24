@@ -1,24 +1,32 @@
 // background.js
 
+// Listen for keyboard shortcut commands
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === "refresh-with-clear") {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.id) return;
-
-    // Inject script to clear localStorage/sessionStorage and other storages
-    chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: clearAllStoragesAndNotify,
-    }, () => {
-        // Start circular progress animation around the icon (direct call in service worker)
-        startProgressAnimation(1500).catch(() => {
-          // fallback to badge tick
-          chrome.action.setBadgeText({ text: '✓' });
-          setTimeout(() => chrome.action.setBadgeText({ text: '' }), 1500);
-        });
-    });
+    await executeHardcoreRefresh();
   }
 });
+
+// Background script handles keyboard shortcuts via chrome.commands.onCommand
+
+// Function to execute the hardcore refresh
+async function executeHardcoreRefresh() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab || !tab.id) return;
+
+  // Inject script to clear localStorage/sessionStorage and other storages
+  chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: clearAllStoragesAndNotify,
+  }, () => {
+    // Start circular progress animation around the icon (direct call in service worker)
+    startProgressAnimation(1500).catch(() => {
+      // fallback to badge tick
+      chrome.action.setBadgeText({ text: '✓' });
+      setTimeout(() => chrome.action.setBadgeText({ text: '' }), 1500);
+    });
+  });
+}
 
 // This function runs in the page context
 function clearAllStoragesAndNotify() {
