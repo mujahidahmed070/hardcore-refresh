@@ -10,9 +10,12 @@ chrome.commands.onCommand.addListener(async (command) => {
       target: { tabId: tab.id },
       func: clearAllStoragesAndNotify,
     }, () => {
-      // Show tick animation on extension icon
-      chrome.action.setBadgeText({ text: '✓' });
-      setTimeout(() => chrome.action.setBadgeText({ text: '' }), 1500);
+        // Start circular progress animation around the icon (direct call in service worker)
+        startProgressAnimation(1500).catch(() => {
+          // fallback to badge tick
+          chrome.action.setBadgeText({ text: '✓' });
+          setTimeout(() => chrome.action.setBadgeText({ text: '' }), 1500);
+        });
     });
   }
 });
@@ -56,13 +59,23 @@ function clearAllStoragesAndNotify() {
       // Notify background to show tick
       try {
         if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
-          chrome.runtime.sendMessage({ action: 'showTick' });
+              chrome.runtime.sendMessage({ action: 'startProgress', duration: 2000 });
         }
       } catch (e) {
         // ignore errors in page context
       }
 
-      setTimeout(() => location.reload(), 2000);
+      // Ensure the background stops the progress animation before reload
+      setTimeout(() => {
+        try {
+          if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage({ action: 'stopProgress' });
+          }
+        } catch (e) {
+          // ignore
+        }
+        location.reload();
+      }, 2000);
     } catch (e) {
       console.error("Error clearing storages:", e);
       alert("Error clearing storages: " + e.message);
@@ -149,9 +162,194 @@ function clearAllStoragesAndNotify() {
 
 // Listen for messages from page script
 chrome.runtime.onMessage.addListener((message) => {
-  if (message && message.action === 'showTick') {
-    // Show tick animation on extension icon
+  if (!message || !message.action) return;
+  if (message.action === 'showTick') {
+    // fallback: show tick badge briefly
     chrome.action.setBadgeText({ text: '✓' });
     setTimeout(() => chrome.action.setBadgeText({ text: '' }), 1500);
+    return;
+  }
+
+  if (message.action === 'startProgress') {
+    const duration = typeof message.duration === 'number' ? message.duration : 1500;
+    startProgressAnimation(duration).catch(() => {
+      // fallback to badge tick if animation isn't supported
+      chrome.action.setBadgeText({ text: '✓' });
+      setTimeout(() => chrome.action.setBadgeText({ text: '' }), duration);
+    });
+    return;
+  }
+
+  if (message.action === 'stopProgress') {
+    stopProgressAnimation();
+    return;
   }
 });
+
+// Progress animation implementation
+let progressInterval = null;
+let progressStart = 0;
+let progressDuration = 0;
+let logoBitmap = null; // cached ImageBitmap of logo-v2.png
+let progressGuardTimer = null;
+
+async function startProgressAnimation(durationMs = 1500) {
+  if (progressInterval) {
+    // already running, extend duration
+    progressDuration = Math.max(progressDuration, durationMs);
+    return;
+  }
+  progressDuration = durationMs;
+  progressStart = Date.now();
+
+  // clear any previous guard
+  if (progressGuardTimer) {
+    clearTimeout(progressGuardTimer);
+    progressGuardTimer = null;
+  }
+  // set a forced guard to stop the animation even if something goes wrong
+  progressGuardTimer = setTimeout(() => {
+    try {
+      console.warn('Progress guard timeout fired; forcing stopProgressAnimation');
+      stopProgressAnimation();
+    } catch (e) {
+      // ignore
+    }
+  }, durationMs + 1000);
+
+  // Animation tick: draw ring at progress and set as action icon
+  progressInterval = setInterval(async () => {
+    const elapsed = Date.now() - progressStart;
+    const t = Math.min(1, elapsed / progressDuration);
+    try {
+      await setIconWithProgress(t);
+    } catch (err) {
+      // If drawing or setIcon fails, stop the animation and fallback to a brief badge tick
+      console.error('Progress icon update failed, stopping animation:', err);
+      stopProgressAnimation();
+      try {
+        chrome.action.setBadgeText({ text: '✓' });
+        setTimeout(() => chrome.action.setBadgeText({ text: '' }), Math.max(500, progressDuration));
+      } catch (e) {
+        // ignore
+      }
+      return;
+    }
+
+    if (t >= 1) {
+      stopProgressAnimation();
+    }
+  }, 40);
+}
+
+function stopProgressAnimation() {
+  if (progressInterval) {
+    clearInterval(progressInterval);
+    progressInterval = null;
+  }
+  if (progressGuardTimer) {
+    clearTimeout(progressGuardTimer);
+    progressGuardTimer = null;
+  }
+  // restore original icon
+  chrome.action.setIcon({ path: {
+    16: 'logo-v2.png',
+    48: 'logo-v2.png',
+    128: 'logo-v2.png'
+  }});
+}
+
+async function setIconWithProgress(progress) {
+  // progress: 0..1
+  const sizes = [16, 48, 128];
+  const imageDataMap = {};
+  for (const size of sizes) {
+    const imgData = await drawProgressIcon(size, progress);
+    imageDataMap[size] = imgData;
+  }
+
+  // Set the action icon using ImageData objects
+  try {
+    chrome.action.setIcon({ imageData: {
+      16: imageDataMap[16],
+      48: imageDataMap[48],
+      128: imageDataMap[128]
+    }});
+  } catch (e) {
+    // If setIcon with ImageData fails, rethrow so caller can fallback
+    throw e;
+  }
+}
+
+async function drawProgressIcon(size, progress) {
+  // Use OffscreenCanvas (works in service worker). Return ImageData.
+  if (typeof OffscreenCanvas === 'undefined') throw new Error('OffscreenCanvas not available');
+
+  const canvas = new OffscreenCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+
+  // clear
+  ctx.clearRect(0, 0, size, size);
+
+  const center = size / 2;
+  const radius = center - Math.max(4, size * 0.06);
+
+  // Draw the actual logo under the ring. Cache a single ImageBitmap for performance.
+  try {
+    if (!logoBitmap) {
+      const url = chrome.runtime.getURL('logo-v2.png');
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      // createImageBitmap available in service worker contexts
+      logoBitmap = await createImageBitmap(blob);
+    }
+
+    // draw the logo scaled to the icon size while preserving aspect ratio
+    const bmp = logoBitmap;
+    const bmpRatio = bmp.width / bmp.height;
+    let dw = size;
+    let dh = size;
+    if (bmpRatio > 1) {
+      // wider than tall
+      dh = size / bmpRatio;
+    } else {
+      dw = size * bmpRatio;
+    }
+    const dx = Math.round((size - dw) / 2);
+    const dy = Math.round((size - dh) / 2);
+    ctx.drawImage(bmp, 0, 0, bmp.width, bmp.height, dx, dy, dw, dh);
+  } catch (e) {
+    // If loading logo fails, draw a simple white circular background as fallback
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.fill();
+    // small placeholder mark
+    ctx.strokeStyle = '#2e7d32';
+    ctx.lineWidth = Math.max(2, size * 0.06);
+    ctx.beginPath();
+    ctx.arc(center, center, radius * 0.45, -Math.PI / 2, Math.PI / 2, false);
+    ctx.stroke();
+  }
+
+  // draw progress ring in bright green (overlay only)
+  const ringRadius = radius;
+  ctx.lineWidth = Math.max(2, size * 0.09);
+  ctx.strokeStyle = '#43a047';
+  ctx.beginPath();
+  ctx.arc(center, center, ringRadius, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2, false);
+  ctx.stroke();
+
+  return ctx.getImageData(0, 0, size, size);
+}
+
+function createCanvas(w, h) {
+  // Not used anymore; kept for compatibility
+  if (typeof OffscreenCanvas !== 'undefined') {
+    const c = new OffscreenCanvas(w, h);
+    c.width = w; c.height = h;
+    return c;
+  }
+  throw new Error('No OffscreenCanvas available in this environment');
+}
+

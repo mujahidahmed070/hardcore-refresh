@@ -40,9 +40,14 @@ form.addEventListener('submit', (e) => {
         clearCookiesCheckbox.checked
       ]
     }, () => {
-      // Show tick animation on extension icon
-      chrome.action.setBadgeText({ text: '✓' });
-      setTimeout(() => chrome.action.setBadgeText({ text: '' }), 1500);
+      // Request background to run a circular progress animation around the icon
+      try {
+        chrome.runtime.sendMessage({ action: 'startProgress', duration: 1500 });
+      } catch (e) {
+        // fallback to badge tick if messaging fails
+        chrome.action.setBadgeText({ text: '✓' });
+        setTimeout(() => chrome.action.setBadgeText({ text: '' }), 1500);
+      }
     });
   });
 });
