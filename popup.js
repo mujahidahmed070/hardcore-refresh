@@ -2,6 +2,24 @@ const clearLocalStorageCheckbox = document.getElementById('clearLocalStorage');
 const clearSessionStorageCheckbox = document.getElementById('clearSessionStorage');
 const clearCookiesCheckbox = document.getElementById('clearCookies');
 const form = document.getElementById('popup-form');
+const runButton = document.getElementById('runButton');
+const toast = document.getElementById('toast');
+
+function setRunning(running) {
+  if (runButton) {
+    runButton.disabled = running;
+    runButton.textContent = running ? 'Running…' : 'Clear & Reload';
+  }
+}
+
+function showToast(msg, ms = 1500) {
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, ms);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   chrome.storage.sync.get({
@@ -13,6 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
     clearSessionStorageCheckbox.checked = prefs.clearSessionStorage;
     clearCookiesCheckbox.checked = prefs.clearCookies;
   });
+  // ensure run button is in default state
+  setRunning(false);
 });
 
 form.addEventListener('submit', (e) => {
@@ -41,12 +61,16 @@ form.addEventListener('submit', (e) => {
       ]
     }, () => {
       // Request background to run a circular progress animation around the icon
+      // disable UI while running
+      setRunning(true);
       try {
         chrome.runtime.sendMessage({ action: 'startProgress', duration: 1500 });
       } catch (e) {
         // fallback to badge tick if messaging fails
         chrome.action.setBadgeText({ text: '✓' });
         setTimeout(() => chrome.action.setBadgeText({ text: '' }), 1500);
+        // re-enable UI after short delay
+        setTimeout(() => setRunning(false), 1200);
       }
     });
   });
@@ -64,6 +88,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       chrome.cookies.getAll({domain}, (cookies) => {
         for (const cookie of cookies) {
           const cookieUrl = (cookie.secure ? "https://" : "http://") + cookie.domain + cookie.path;
+
+// Listen for background progress completion so we can re-enable UI and show toast
+chrome.runtime.onMessage.addListener((message) => {
+  if (!message || !message.action) return;
+  if (message.action === 'progressComplete') {
+    setRunning(false);
+    showToast('Done');
+  }
+});
           chrome.cookies.remove({url: cookieUrl, name: cookie.name});
         }
       });

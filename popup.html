@@ -4,24 +4,60 @@
   <meta charset="UTF-8" />
   <title>Hardcore Refresh</title>
   <style>
+    :root{
+      --accent:#0b8043;
+      --muted:#6b7280;
+      --bg:#ffffff;
+      --radius:10px;
+    }
     body {
-      font-family: Arial, sans-serif;
-      width: 250px;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      width: 320px;
       padding: 1rem;
+      color: #111827;
+      background: var(--bg);
+      box-sizing: border-box;
     }
     h2 {
-      margin-top: 0;
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+      font-weight: 600;
     }
-    label {
-      display: block;
-      margin-bottom: 0.5rem;
-    }
+    #popup-form { display: grid; gap: 0.5rem; }
+    label { display: flex; gap: .6rem; align-items: flex-start; font-size: 0.95rem; }
+    .description { font-size: 0.85rem; color: var(--muted); margin-left: 26px; margin-top: -6px; }
+    .controls { display:flex; gap:.5rem; align-items:center; margin-top: .6rem; }
     button {
-      padding: 0.5rem 1rem;
-      font-size: 1rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.6rem 0.9rem;
+      font-weight: 600;
       cursor: pointer;
-      margin-top: 1rem;
+      box-shadow: 0 4px 10px rgba(11,128,67,0.12);
+      transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease;
     }
+    button:active { transform: translateY(1px); }
+    button[disabled] { opacity: .6; cursor: default; transform: none; box-shadow: none; }
+    a { color: var(--accent); font-size: 0.9rem; }
+    .toast {
+      display: none;
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      top: 14px; /* a little down from the top */
+      background: rgba(17,24,39,0.95);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px; /* rounder corners */
+      font-size: 0.95rem;
+      z-index: 100000;
+      opacity: 0;
+      box-shadow: 0 8px 18px rgba(2,6,23,0.2);
+      transition: opacity .22s ease, transform .22s ease;
+    }
+    .toast.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
@@ -31,17 +67,23 @@
       <input type="checkbox" id="clearLocalStorage" />
       Clear localStorage
     </label>
+    <div class="description">Removes all entries from localStorage for the current page.</div>
     <label>
       <input type="checkbox" id="clearSessionStorage" />
       Clear sessionStorage
     </label>
+    <div class="description">Clears sessionStorage (per-tab) for the current page.</div>
     <label>
       <input type="checkbox" id="clearCookies" />
       Clear cookies
     </label>
-    <button type="submit">Refresh Now</button>
+    <div class="description">Attempts to remove cookies for the current site (may require permissions).</div>
+    <div class="controls">
+      <button id="runButton" type="submit">Clear & Reload</button>
+      <a href="options.html" target="_blank">Options</a>
+    </div>
   </form>
-  <p><a href="options.html" target="_blank">Open Options</a></p>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="popup.js"></script>
 </body>

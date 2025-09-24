@@ -257,6 +257,12 @@ function stopProgressAnimation() {
     48: 'logo-v2.png',
     128: 'logo-v2.png'
   }});
+  // Notify any popups that progress finished so they can re-enable UI
+  try {
+    chrome.runtime.sendMessage({ action: 'progressComplete' });
+  } catch (e) {
+    // ignore
+  }
 }
 
 async function setIconWithProgress(progress) {
